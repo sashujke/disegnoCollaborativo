@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Il mio assistente virtuale</title>
+    <style>
+        /* Stile Globale */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #ddd;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Contenitore principale della chat */
+        .chat-container {
+            width: 100%;
+            max-width: 450px;
+            height: 90vh;
+            background-color: #efeae2; /* Colore di sfondo stile WhatsApp */
+            display: flex;
+            flex-direction: column;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* Header della chat */
+        .chat-header {
+            background-color: #850083;
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+
+        /* Area dei messaggi */
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Bolla del messaggio base */
+        .message {
+            max-width: 75%;
+            padding: 10px 15px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        /* Messaggio ricevuto (Sinistra) */
+        .message.received {
+            background-color: #ffffff;
+            align-self: flex-start;
+            border-top-left-radius: 0;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+
+        /* Messaggio inviato (Destra) */
+        .message.sent {
+            background-color: #d9fdd3; /* Verdino */
+            align-self: flex-end;
+            border-top-right-radius: 0;
+            box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        }
+
+        /* Area di input (in basso) */
+        .chat-input-container {
+            background-color: #f0f2f5;
+            padding: 10px 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chat-input-container input {
+            flex: 1;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 24px;
+            font-size: 1rem;
+            outline: none;
+            background-color: #ffffff;
+        }
+
+        .chat-input-container button {
+            background-color: #8f008d;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+
+        .chat-input-container button:hover {
+            background-color: #8f008d;
+        }
+        
+        /* Icona di invio stilizzata in CSS */
+        .send-icon {
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            display: inline-block;
+            padding: 4px;
+            transform: rotate(-45deg);
+            margin-right: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            Assistente virtuale
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            </div>
+        
+        <div class="chat-input-container">
+            <input type="text" id="message-input" placeholder="Scrivi un messaggio..." autocomplete="off">
+            <button id="send-btn" onclick="handleSend()">
+                <i class="send-icon"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        
+        const messagesDiv = document.getElementById('chat-messages');
+        const inputField = document.getElementById('message-input');
+
+        
+        const socket = new WebSocket("ws://hacking.farm:4242");
+
+        socket.addEventListener("message", async event => {
+            let text = event.data;
+            appendMessage(text, "received");
+        });
+
+        function sendMessage(msg) {
+            socket.send(msg);
+        }
+
+        // Funzione per aggiungere una bolla di messaggio alla UI
+        function appendMessage(text, type) {
+            const messageEl = document.createElement('div');
+            messageEl.classList.add('message', type); // type sarà 'sent' o 'received'
+            messageEl.textContent = text;
+            
+            messagesDiv.appendChild(messageEl);
+            
+            // Auto-scroll in basso
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Funzione attivata dal click sul bottone o dal tasto Invio
+        function handleSend() {
+            const text = inputField.value.trim();
+            if (text === '') return; // Non inviare messaggi vuoti
+            
+            // Manda il messaggio al server tramite WebSocket
+            sendMessage(text);
+            
+            // Mostra il messaggio nella NOSTRA UI a destra
+            appendMessage(text, 'sent');
+            
+            // Pulisci l'input
+            inputField.value = '';
+            inputField.focus();
+        }
+
+        // Ascolta il tasto "Invio" per mandare il messaggio comodamente
+        inputField.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                handleSend();
+            }
+        });
+    </script>
+</body>
+</html>
