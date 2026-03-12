@@ -30,81 +30,85 @@
     <button id="clear" class="clear"> Clear</button>
     
  
-    <script>      
+    <script>
         const disegno = document.getElementById('disegno');
-        const ctx = disegno.getContext("2d");
-
+        const ctx = disegno.getContext('2d');
         const width = disegno.width;
         const height = disegno.height;
 
-        const elements = [];
-        const customColors = ["red", "blue", "green", "orange", "purple", "brown"];
+        const socket = new WebSocket('ws://localhost:4242');
+        const customColors = ['red', 'blue', 'green', 'orange', 'purple', 'brown'];
+
+        let elements = [];
+        let dragging = false;
+        let rect = null;
 
         function randomColor() {
             return customColors[Math.floor(Math.random() * customColors.length)];
         }
 
-        const rect = { 
-            x: 0,
-            y: 0,
-            w: width,
-            h: height,
-            color: randomColor()
-        };
+        function drawRect(r) {
+            ctx.fillStyle = r.color || 'black';
+            ctx.strokeStyle = r.color || 'black';
+            ctx.fillRect(r.x, r.y, r.w, r.h);
+            ctx.beginPath();
+            ctx.rect(r.x, r.y, r.w, r.h);
+            ctx.stroke();
+        }
 
         function draw() {
             ctx.clearRect(0, 0, width, height);
-            elements.forEach(r => {
-                ctx.fillStyle = r.color || "black";
-                ctx.strokeStyle = r.color || "black";
-                ctx.fillRect(r.x, r.y, r.w, r.h);
-                ctx.beginPath();
-                ctx.rect(r.x, r.y, r.w, r.h);
-                ctx.stroke();
-            });
-            if (dragging) {
-                ctx.fillStyle = rect.color || "black";
-                ctx.strokeStyle = rect.color || "black";
-                ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-                ctx.beginPath();
-                ctx.rect(rect.x, rect.y, rect.w, rect.h);
-                ctx.stroke();
-            }
+            elements.forEach(drawRect);
+            if (dragging && rect) drawRect(rect);
             requestAnimationFrame(draw);
         }
 
-        let dragging = false;
         requestAnimationFrame(draw);
 
         disegno.addEventListener('mousedown', (e) => {
             dragging = true;
-            rect.x = e.offsetX;
-            rect.y = e.offsetY;
-            rect.w = 0;
-            rect.h = 0;
-            rect.color = randomColor();
+            rect = {
+                x: e.offsetX,
+                y: e.offsetY,
+                w: 0,
+                h: 0,
+                color: randomColor()
+            };
         });
 
         disegno.addEventListener('mousemove', (e) => {
-            if (dragging) {
-                rect.w = e.offsetX - rect.x;
-                rect.h = e.offsetY - rect.y;
-            }
+            if (!dragging || !rect) return;
+            rect.w = e.offsetX - rect.x;
+            rect.h = e.offsetY - rect.y;
         });
 
         document.body.addEventListener('mouseup', () => {
-            if (!dragging) return;
+            if (!dragging || !rect) return;
             dragging = false;
-            if (rect.w === 0 || rect.h === 0) return;
-            elements.push({ ...rect });
-            console.log(elements);
+
+            const saved = {
+                x: rect.w < 0 ? rect.x + rect.w : rect.x,
+                y: rect.h < 0 ? rect.y + rect.h : rect.y,
+                w: Math.abs(rect.w),
+                h: Math.abs(rect.h),
+                color: rect.color
+            };
+
+            if (saved.w === 0 || saved.h === 0) {
+                rect = null;
+                return;
+            }
+
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(saved));
+            }
+
+            rect = null;
         });
 
-        const socket = new WebSocket("ws://localhost:4242");
-
-        socket.addEventListener("message", async event => {
+        socket.addEventListener('message', (event) => {
+            elements = JSON.parse(event.data);
         });
-
     </script>
 </body>
 </html>
