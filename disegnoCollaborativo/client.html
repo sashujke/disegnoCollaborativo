@@ -27,7 +27,9 @@
 <body>
     <canvas width="600" height="400" id="disegno">
     </canvas>
-
+    <button id="clear" class="clear"> Clear</button>
+    
+ 
     <script>      
         const disegno = document.getElementById('disegno');
         const ctx = disegno.getContext("2d");
@@ -36,34 +38,51 @@
         const height = disegno.height;
 
         const elements = [];
-        let newElement;
+        const customColors = ["red", "blue", "green", "orange", "purple", "brown"];
+
+        function randomColor() {
+            return customColors[Math.floor(Math.random() * customColors.length)];
+        }
 
         const rect = { 
             x: 0,
             y: 0,
             w: width,
-            h: height
+            h: height,
+            color: randomColor()
         };
 
         function draw() {
-            const { x, y, w, h } = rect;
             ctx.clearRect(0, 0, width, height);
-            ctx.beginPath();
-            ctx.rect(x, y, w, h);
-            ctx.stroke();
-            // riesegui draw al prossimo frame
+            elements.forEach(r => {
+                ctx.fillStyle = r.color || "black";
+                ctx.strokeStyle = r.color || "black";
+                ctx.fillRect(r.x, r.y, r.w, r.h);
+                ctx.beginPath();
+                ctx.rect(r.x, r.y, r.w, r.h);
+                ctx.stroke();
+            });
+            if (dragging) {
+                ctx.fillStyle = rect.color || "black";
+                ctx.strokeStyle = rect.color || "black";
+                ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+                ctx.beginPath();
+                ctx.rect(rect.x, rect.y, rect.w, rect.h);
+                ctx.stroke();
+            }
             requestAnimationFrame(draw);
         }
 
+        let dragging = false;
         requestAnimationFrame(draw);
 
-        let dragging = false;
         disegno.addEventListener('mousedown', (e) => {
             dragging = true;
             rect.x = e.offsetX;
             rect.y = e.offsetY;
             rect.w = 0;
             rect.h = 0;
+            rect.color = randomColor();
         });
 
         disegno.addEventListener('mousemove', (e) => {
@@ -73,10 +92,12 @@
             }
         });
 
-
-        document.body.addEventListener('mouseup', (e) => {
+        document.body.addEventListener('mouseup', () => {
+            if (!dragging) return;
             dragging = false;
-            // console.log("UP " + e.offsetX + ", " + e.offsetY);
+            if (rect.w === 0 || rect.h === 0) return;
+            elements.push({ ...rect });
+            console.log(elements);
         });
 
         const socket = new WebSocket("ws://localhost:4242");
